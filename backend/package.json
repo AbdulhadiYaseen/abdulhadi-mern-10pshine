@@ -1,0 +1,22 @@
+{
+  "name": "notes",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AbdulhadiYaseen/abdulhadi-mern-10pshine.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AbdulhadiYaseen/abdulhadi-mern-10pshine/issues"
+  },
+  "homepage": "https://github.com/AbdulhadiYaseen/abdulhadi-mern-10pshine#readme",
+  "description": "",
+  "dependencies": {
+    "mysql2": "^3.14.0"
+  }
+}
