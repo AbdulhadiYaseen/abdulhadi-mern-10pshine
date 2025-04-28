@@ -5,6 +5,7 @@ const cors = require('cors')
 const pino = require('pino-http')
 const errorhandler = require('./middleware/errorHandler')
 const logger = require('./middleware/logger')
+const routes = require('./routes/user')
 
 app.use(logger)
 app.use(cors())
@@ -13,11 +14,6 @@ app.use(pino)
 app.use(errorhandler)
 
 const userRoutes = require('./routes/user')
-const notesRoutes = require('./routes/noteRoutes')
-
-app.use('/api/users', userRoutes)
-
-app.use('/api/notes', notesRoutes)
 
 app.use('/api/users', userRoutes)
 
