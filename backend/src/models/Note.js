@@ -25,6 +25,8 @@ const Note = sequelize.define('Note', {
         }
     }
 }, {
+    tableName: 'Notes',
+    timestamps: true,
     hooks: {
         afterCreate: (note) => {
             dbLogger.info(`Note created: ${note.id}`);
@@ -37,5 +39,12 @@ const Note = sequelize.define('Note', {
         }
     }
 });
+
+Note.associate = (models) => {
+    Note.belongsTo(models.User, {
+        foreignKey: 'userId',
+        onDelete: 'CASCADE'
+    });
+};
 
 module.exports = Note; 

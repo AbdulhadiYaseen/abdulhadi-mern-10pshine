@@ -26,6 +26,8 @@ const User = sequelize.define('User', {
         allowNull: false
     }
 }, {
+    tableName: 'Users',
+    timestamps: true,
     hooks: {
         beforeCreate: async (user) => {
             if (user.password) {
@@ -42,7 +44,6 @@ const User = sequelize.define('User', {
     }
 });
 
-// Instance method to check password
 User.prototype.isValidPassword = async function(password) {
     try {
         return await bcrypt.compare(password, this.password);
@@ -50,6 +51,13 @@ User.prototype.isValidPassword = async function(password) {
         dbLogger.error('Error comparing passwords:', error);
         throw error;
     }
+};
+
+User.associate = (models) => {
+    User.hasMany(models.Note, {
+        foreignKey: 'userId',
+        onDelete: 'CASCADE'
+    });
 };
 
 module.exports = User; 

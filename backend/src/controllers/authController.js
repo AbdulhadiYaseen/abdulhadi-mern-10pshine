@@ -1,26 +1,23 @@
 const jwt = require('jsonwebtoken');
 const { authLogger } = require('../utils/logger');
-const User = require('../models/User');
+const { User } = require('../models');
 
 exports.signup = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
-        // Check if user already exists
         const existingUser = await User.findOne({ where: { email } });
         if (existingUser) {
             authLogger.warn(`Signup attempt with existing email: ${email}`);
             return res.status(400).json({ message: 'Email already registered' });
         }
 
-        // Create new user
         const user = await User.create({ name, email, password });
         authLogger.info(`New user created: ${user.id}`);
 
-        // Generate token
         const token = jwt.sign(
             { userId: user.id },
-            process.env.JWT_SECRET,
+            process.env.JWT_SECRET || 'default_secret_key_for_development',
             { expiresIn: '24h' }
         );
 
@@ -34,7 +31,20 @@ exports.signup = async (req, res) => {
             }
         });
     } catch (error) {
-        authLogger.error('Signup error:', error);
+        authLogger.error('Signup error:', { 
+            error: error.message, 
+            stack: error.stack,
+            body: req.body,
+            name: error.name,
+            details: error.toString()
+        });
+
+        if (error.name === 'SequelizeValidationError') {
+            return res.status(400).json({ message: 'Validation error', errors: error.errors });
+        } else if (error.name === 'SequelizeUniqueConstraintError') {
+            return res.status(409).json({ message: 'Email already exists' });
+        }
+        
         res.status(500).json({ message: 'Error creating user', error: error.message });
     }
 };
@@ -43,21 +53,18 @@ exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Find user
         const user = await User.findOne({ where: { email } });
         if (!user) {
             authLogger.warn(`Login attempt with non-existent email: ${email}`);
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Check password
         const isMatch = await user.isValidPassword(password);
         if (!isMatch) {
             authLogger.warn(`Invalid password attempt for user: ${user.id}`);
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Generate token
         const token = jwt.sign(
             { userId: user.id },
             process.env.JWT_SECRET,

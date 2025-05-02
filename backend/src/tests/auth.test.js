@@ -9,12 +9,12 @@ const expect = chai.expect;
 
 describe('Authentication Controller', () => {
     before(async () => {
-        // Sync database and clear tables
+        
         await sequelize.sync({ force: true });
     });
 
     after(async () => {
-        // Close database connection
+        
         await sequelize.close();
     });
 

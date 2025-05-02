@@ -1,5 +1,5 @@
 const { dbLogger } = require('../utils/logger');
-const Note = require('../models/Note');
+const { Note } = require('../models');
 
 exports.createNote = async (req, res) => {
     try {

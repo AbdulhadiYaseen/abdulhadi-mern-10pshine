@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "mocha src/tests/**/*.test.js --timeout 5000",
-    "test:watch": "mocha src/tests/**/*.test.js --watch",
+    "test": "mocha src/tests*.test.js --timeout 5000",
+    "test:watch": "mocha src/tests*.test.js --watch",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix"
   },
