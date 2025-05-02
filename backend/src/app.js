@@ -8,14 +8,18 @@ const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
-// Connect to database
 connectDB();
+console.log('Connected to database');
 
-// Middleware
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+}));
+
 app.use(express.json());
 
-// Request logging middleware
 app.use((req, res, next) => {
     httpLogger.info({
         method: req.method,
@@ -27,16 +31,19 @@ app.use((req, res, next) => {
     next();
 });
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', noteRoutes);
 
-// Error handling
-app.use(errorHandler);
-
-// Health check endpoint
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
+
+app.use((req, res, next) => {
+    res.status(404).json({
+        message: 'Resource not found'
+    });
+});
+
+app.use(errorHandler);
 
 module.exports = app; 

@@ -1,23 +1,9 @@
-const express = require('express') 
-const app = express()
-const port = 3000
-const cors = require('cors')
-const pino = require('pino-http')
-const errorhandler = require('./middleware/errorHandler')
-const logger = require('./middleware/logger')
-const routes = require('./routes/user')
+require('dotenv').config();
+const app = require('./src/app');
+const { logger } = require('./src/utils/logger');
 
-app.use(logger)
-app.use(cors())
-app.use(express.json())
-app.use(pino)
-app.use(errorhandler)
-
-const userRoutes = require('./routes/user')
-
-app.use('/api/users', userRoutes)
-
+const port = process.env.PORT || 3000;
 
 app.listen(port, () => {
-    console.log(`Server running on ${port}`)
-})
+    logger.info(`Server running on ${port}`);
+});

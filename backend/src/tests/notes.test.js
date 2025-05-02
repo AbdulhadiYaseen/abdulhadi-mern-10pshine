@@ -13,17 +13,15 @@ describe('Notes Controller', () => {
     let testUser;
 
     before(async () => {
-        // Sync database and clear tables
+        
         await sequelize.sync({ force: true });
 
-        // Create test user
         testUser = await User.create({
             name: 'Test User',
             email: 'test@example.com',
             password: 'password123'
         });
 
-        // Login to get token
         const res = await chai
             .request(app)
             .post('/api/auth/login')
@@ -36,7 +34,7 @@ describe('Notes Controller', () => {
     });
 
     after(async () => {
-        // Close database connection
+        
         await sequelize.close();
     });
 
@@ -73,7 +71,7 @@ describe('Notes Controller', () => {
 
     describe('GET /api/notes/:id', () => {
         it('should get a specific note', async () => {
-            // First create a note
+            
             const createRes = await chai
                 .request(app)
                 .post('/api/notes')
@@ -95,14 +93,13 @@ describe('Notes Controller', () => {
         });
 
         it('should not get a note that does not belong to the user', async () => {
-            // Create another user
+            
             const otherUser = await User.create({
                 name: 'Other User',
                 email: 'other@example.com',
                 password: 'password123'
             });
 
-            // Create a note for the other user
             const otherNote = await Note.create({
                 title: 'Other Note',
                 content: 'This is another note',
@@ -121,7 +118,7 @@ describe('Notes Controller', () => {
 
     describe('PUT /api/notes/:id', () => {
         it('should update a note', async () => {
-            // First create a note
+            
             const createRes = await chai
                 .request(app)
                 .post('/api/notes')
@@ -150,7 +147,7 @@ describe('Notes Controller', () => {
 
     describe('DELETE /api/notes/:id', () => {
         it('should delete a note', async () => {
-            // First create a note
+            
             const createRes = await chai
                 .request(app)
                 .post('/api/notes')

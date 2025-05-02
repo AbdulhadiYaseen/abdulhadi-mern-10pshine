@@ -11,7 +11,6 @@ const errorHandler = (err, req, res, next) => {
         params: req.params
     });
 
-    // Handle specific error types
     if (err.name === 'ValidationError') {
         return res.status(400).json({
             message: 'Validation Error',
@@ -32,7 +31,6 @@ const errorHandler = (err, req, res, next) => {
         });
     }
 
-    // Default error
     res.status(err.status || 500).json({
         message: err.message || 'Internal Server Error'
     });
