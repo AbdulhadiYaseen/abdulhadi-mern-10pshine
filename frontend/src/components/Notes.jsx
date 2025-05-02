@@ -1,65 +1,150 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiPlus, FiMoreVertical, FiTrash2 } from "react-icons/fi";
+import { FiPlus, FiMoreVertical, FiTrash2, FiEdit, FiCalendar } from "react-icons/fi";
+import { noteService } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function Notes({ onLogout }) {
     const navigate = useNavigate();
+    const { logout, user } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [noteTitle, setNoteTitle] = useState("");
     const [noteContent, setNoteContent] = useState("");
     const [notes, setNotes] = useState([]);
     const [selectedNote, setSelectedNote] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [viewMode, setViewMode] = useState("grid"); 
 
-    const handleAddNote = () => {
+    useEffect(() => {
+        fetchNotes();
+    }, []);
+
+    const fetchNotes = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const fetchedNotes = await noteService.getNotes();
+            setNotes(fetchedNotes);
+            
+            if (fetchedNotes.length > 0 && !selectedNote) {
+                setSelectedNote(fetchedNotes[0]);
+            }
+        } catch (err) {
+            setError('Failed to fetch notes. Please try again.');
+            console.error('Error fetching notes:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleAddNote = async () => {
         if (noteTitle.trim()) {
-            const newNote = {
-                id: Date.now(),
-                title: noteTitle,
-                content: noteContent,
-                createdAt: new Date().toLocaleString()
-            };
-            setNotes([newNote, ...notes]);
-            setIsModalOpen(false);
-            setNoteTitle("");
-            setNoteContent("");
+            setIsLoading(true);
+            try {
+                const newNote = {
+                    title: noteTitle,
+                    content: noteContent
+                };
+                
+                const response = await noteService.createNote(newNote);
+                setNotes([response.note, ...notes]);
+                setIsModalOpen(false);
+                setNoteTitle("");
+                setNoteContent("");
+            } catch (err) {
+                setError('Failed to create note. Please try again.');
+                console.error('Error creating note:', err);
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 
-    const handleNoteClick = (note) => {
+    const handleNoteClick = async (note) => {
+        setOpenMenuId(null); 
+        
         setSelectedNote(note);
-        setOpenMenuId(null); // Close menu when selecting a note
+        setViewMode("detail");
+
+        if (!note.content) {
+            setIsLoading(true);
+            try {
+                const fullNote = await noteService.getNote(note.id);
+                setSelectedNote(fullNote);
+            } catch (err) {
+                setError('Failed to fetch note details.');
+                console.error('Error fetching note details:', err);
+            } finally {
+                setIsLoading(false);
+            }
+        }
     };
 
-    const handleDeleteNote = (noteId) => {
-        setNotes(notes.filter(note => note.id !== noteId));
-        if (selectedNote?.id === noteId) {
-            setSelectedNote(null);
+    const handleDeleteNote = async (noteId, event) => {
+        if (event) event.stopPropagation();
+        setIsLoading(true);
+        try {
+            await noteService.deleteNote(noteId);
+            setNotes(notes.filter(note => note.id !== noteId));
+            if (selectedNote?.id === noteId) {
+                setSelectedNote(null);
+                setViewMode("grid");
+            }
+            setOpenMenuId(null);
+        } catch (err) {
+            setError('Failed to delete note.');
+            console.error('Error deleting note:', err);
+        } finally {
+            setIsLoading(false);
         }
-        setOpenMenuId(null);
     };
 
     const toggleMenu = (noteId, event) => {
-        event.stopPropagation(); // Prevent note selection when clicking menu
+        event.stopPropagation(); 
         setOpenMenuId(openMenuId === noteId ? null : noteId);
     };
 
-    const handleLogout = () => {
-        onLogout();
-        navigate('/login');
+    const handleLogout = async () => {
+        try {
+            await logout();
+            onLogout();
+            navigate('/login');
+        } catch (err) {
+            console.error('Error logging out:', err);
+        }
+    };
+
+    const goBackToGrid = () => {
+        setViewMode("grid");
+        setSelectedNote(null);
+    };
+
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear().toString().substr(-2)}`;
+    };
+
+    const getContentPreview = (content, maxLength = 80) => {
+        return content ? content.substring(0, maxLength) + (content.length > maxLength ? '...' : '') : '';
     };
 
     return (
-        <div className="flex h-screen">
-            <aside className="w-40 bg-yellow-500 text-white p-4">
-                <h2 className="text-xl font-semibold">Profile</h2>
-                <ul className="mt-12 space-y-4">
+        <div className="flex h-screen bg-gray-50">
+            {}
+            <aside className="w-48 bg-yellow-500 text-white p-4 min-h-screen">
+                <div className="mb-8">
+                    <h2 className="text-l font-bold">{user?.name || 'User'}</h2>
+                    <p className="text-sm mt-2"></p>
+                </div>
+                <ul className="space-y-4">
                     <li>
                         <button 
-                            className="w-full text-left px-4 py-2 rounded-md hover:bg-yellow-600 transition-colors cursor-pointer"
-                            onClick={() => navigate("/dashboard")}
+                            className="w-full text-left px-4 py-2 rounded-md bg-yellow-600 font-medium transition-colors cursor-pointer"
+                            onClick={() => navigate("/notes")}
                         >
-                            Dashboard
+                            Notes
                         </button>
                     </li>
                     <li>
@@ -89,75 +174,125 @@ function Notes({ onLogout }) {
                 </ul>
             </aside>
 
-            <aside className="w-67 bg-gray-600 text-white p-4">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-semibold">All Notes</h2>
+            {}
+            <div className="flex-1 p-6 overflow-y-auto">
+                <div className="mb-6 flex justify-between items-center">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">
+                            {viewMode === "grid" ? "All Notes" : "Note Details"}
+                        </h1>
+                        {viewMode === "detail" && (
+                            <button 
+                                onClick={goBackToGrid} 
+                                className="text-yellow-600 hover:text-yellow-800 mt-1"
+                            >
+                                ← Back to all notes
+                            </button>
+                        )}
+                    </div>
                     <button 
                         onClick={() => setIsModalOpen(true)}
-                        className="p-2 hover:bg-gray-500 rounded-full transition-colors hover:cursor-pointer"
+                        className="p-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-full shadow-md transition-colors"
+                        title="Add New Note"
                     >
-                        <FiPlus className="text-2xl" />
+                        <FiPlus className="text-xl" />
                     </button>
                 </div>
-                <ul className="mt-8 space-y-2">
-                    {notes.map((note) => (
-                        <React.Fragment key={note.id}>
-                    <hr className="border-solid border-gray-400 border-2 my-4" />
-                            <li 
-                                className={`truncate w-60 hover:bg-gray-500 p-2 rounded-md cursor-pointer transition-colors ${
-                                    selectedNote?.id === note.id ? 'bg-gray-500' : ''
-                                }`}
-                                onClick={() => handleNoteClick(note)}
-                            >
-                                <div className="flex items-center justify-between">
-                                    <span className="truncate flex-1 mr-2">{note.title}</span>
-                                    <div className="relative">
-                                        <button
-                                            onClick={(e) => toggleMenu(note.id, e)}
-                                            className="p-1 hover:bg-gray-400 rounded-full transition-colors hover:cursor-pointer"
-                                        >
-                                            <FiMoreVertical className="text-xl" />
-                                        </button>
-                                        {openMenuId === note.id && (
-                                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 ">
-                                                <button
-                                                    onClick={() => handleDeleteNote(note.id)}
-                                                    className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                                                >
-                                                    <FiTrash2 className="mr-2" />
-                                                    Delete Note
-                                                </button>
-                                            </div>
-                                        )}
+                
+                {error && (
+                    <div className="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md" role="alert">
+                        <span className="block sm:inline">{error}</span>
+                    </div>
+                )}
+                
+                {isLoading && !notes.length ? (
+                    <div className="text-center text-gray-500 py-10">Loading notes...</div>
+                ) : viewMode === "grid" ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {notes.length === 0 ? (
+                            <div className="col-span-full text-center py-10 text-gray-500">
+                                No notes found. Create your first note!
+                            </div>
+                        ) : (
+                            notes.map((note) => (
+                                <div
+                                    key={note.id}
+                                    className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow p-4 border border-gray-200 relative"
+                                    onClick={() => handleNoteClick(note)}
+                                >
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="font-bold text-gray-800 text-lg truncate">{note.title}</h3>
+                                        <div className="relative">
+                                            <button
+                                                onClick={(e) => toggleMenu(note.id, e)}
+                                                className="text-gray-500 hover:text-gray-700"
+                                            >
+                                                <FiMoreVertical />
+                                            </button>
+                                            {openMenuId === note.id && (
+                                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                                                    <button
+                                                        onClick={(e) => handleDeleteNote(note.id, e)}
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                                    >
+                                                        <FiTrash2 className="mr-2" />
+                                                        Delete Note
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                                        {getContentPreview(note.content)}
+                                    </p>
+                                    <div className="flex items-center text-xs text-gray-500 mt-2">
+                                        <FiCalendar className="mr-1" />
+                                        {formatDate(note.createdAt)}
                                     </div>
                                 </div>
-                            </li>
-                        </React.Fragment>
-                    ))}
-                </ul>
-            </aside>
-            
-            <div className="flex-1 p-4 bg-white">
-                {selectedNote ? (
-                    <div>
-                        <h2 className="text-2xl font-semibold mb-4">{selectedNote.title}</h2>
-                        <p className="text-gray-600 mb-4">Created: {selectedNote.createdAt}</p>
-                        <div className="prose max-w-none">
-                            {selectedNote.content.split('\n').map((line, index) => (
-                                <p key={index} className="mb-2">{line}</p>
-                            ))}
-                        </div>
+                            ))
+                        )}
                     </div>
                 ) : (
-                    <div className="flex items-center justify-center h-full text-gray-500">
-                        Select a note or create a new one
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        {isLoading ? (
+                            <div className="flex items-center justify-center h-64">
+                                <span className="text-gray-500">Loading note content...</span>
+                            </div>
+                        ) : selectedNote ? (
+                            <div>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-2xl font-bold text-gray-800">{selectedNote.title}</h2>
+                                    <button
+                                        onClick={(e) => handleDeleteNote(selectedNote.id, e)}
+                                        className="text-red-600 hover:text-red-800 p-2"
+                                        title="Delete Note"
+                                    >
+                                        <FiTrash2 />
+                                    </button>
+                                </div>
+                                <p className="text-gray-500 mb-6">
+                                    Created: {new Date(selectedNote.createdAt).toLocaleString()}
+                                </p>
+                                <div className="prose max-w-none">
+                                    {selectedNote.content.split('\n').map((line, index) => (
+                                        <p key={index} className="mb-2 text-gray-700">{line}</p>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="text-center text-gray-500 py-10">
+                                No note selected
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
             
+            {}
             {isModalOpen && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white p-8 rounded-lg w-[800px] shadow-xl transform transition-all">
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+                    <div className="bg-white p-8 rounded-lg w-full max-w-3xl shadow-xl transform transition-all">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-semibold text-gray-800">Add a Note</h2>
                             <button 
@@ -200,10 +335,11 @@ function Notes({ onLogout }) {
                                     Cancel
                                 </button>
                                 <button 
-                                    className="px-4 py-2 text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors cursor-pointer"
+                                    className="px-4 py-2 text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors cursor-pointer disabled:opacity-50"
                                     onClick={handleAddNote}
+                                    disabled={isLoading || !noteTitle.trim()}
                                 >
-                                    Add Note
+                                    {isLoading ? 'Adding...' : 'Add Note'}
                                 </button>
                             </div>
                         </div>
