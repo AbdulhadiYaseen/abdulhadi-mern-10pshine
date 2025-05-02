@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Notes from './components/Notes';
 import Dashboard from './components/Dashboard';
@@ -7,29 +7,35 @@ import Settings from './components/Settings';
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import SignUp from './components/SignUp';
+import { useAuth } from './context/AuthContext';
 
 function App() {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const { user, loading } = useAuth();
 
     const PrivateRoute = ({ children }) => {
-        return isAuthenticated ? children : <Navigate to="/login" />;
-    };
-
-    const handleLogin = () => {
-        setIsAuthenticated(true);
+        if (loading) {
+            return <div className="flex justify-center items-center h-screen">Loading...</div>;
+        }
+        return user ? children : <Navigate to="/login" />;
     };
 
     const handleLogout = () => {
-        setIsAuthenticated(false);
+        
     };
+
+    if (loading) {
+        return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    }
 
     return (
         <Router>
             <Routes>
-
-                <Route path="/login" element={<Login onLogin={handleLogin} />} />
-                <Route path="/signup" element={<SignUp />} />
-
+                <Route path="/login" element={
+                    user ? <Navigate to="/notes" /> : <Login onLogin={() => {}} />
+                } />
+                <Route path="/signup" element={
+                    user ? <Navigate to="/notes" /> : <SignUp />
+                } />
 
                 <Route path="/" element={
                     <PrivateRoute>

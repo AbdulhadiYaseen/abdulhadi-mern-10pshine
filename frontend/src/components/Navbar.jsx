@@ -3,16 +3,13 @@ import logo from "../assets/logo.png";
 
 function Navbar() {
     return (
-        <nav className="bg-yellow-500 text-white flex items-center justify-between py-2 h-15">
-            <div className="flex items-center gap-2 ml-4">
-                <img src={logo} alt="Notesify Logo" className="w-10 h-10" />
-                <h2 className="text-3xl">Notesify</h2>
+        <nav className="bg-yellow-500 text-white flex items-center justify-between py-3 px-6 shadow-md">
+            <div className="flex items-center gap-3">
+                <img src={logo} alt="NoteVault Logo" className="w-10 h-10" />
+                <h2 className="text-2xl font-bold">NoteVault</h2>
             </div>
-            <ul className="flex gap-8 items-center">
-                <li>Home</li>
-                <li>About</li>
-                <li>Contact Us</li>
-            </ul>
+            {}
+            <div></div>
         </nav>
     );
 }

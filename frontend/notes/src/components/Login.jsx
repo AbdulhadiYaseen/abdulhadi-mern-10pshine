@@ -28,15 +28,12 @@ function Login({ onLogin }) {
         try {
             const response = await authService.login(formData);
             const { token, user } = response.data;
-            
-            // Store token and user data
+
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));
-            
-            // Call the onLogin callback
+
             onLogin();
-            
-            // Redirect to notes page
+
             navigate('/notes');
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please try again.');
