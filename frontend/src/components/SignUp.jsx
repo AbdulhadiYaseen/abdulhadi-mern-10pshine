@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.png';
-import notesImage from '../../notes1.png';
+import notesImage from '../assets/logo.png';
 
 function SignUp() {
     const navigate = useNavigate();
@@ -64,7 +64,7 @@ function SignUp() {
             {}
             <div className="hidden md:flex md:w-1/2 bg-yellow-500 flex-col items-center justify-center p-12 text-white">
                 <div className="flex items-center mb-8">
-                    {/* <img src={logo} alt="NoteVault Logo" className="w-16 h-16 mr-4" /> */}
+                    <img src={logo} alt="NoteVault Logo" className="w-16 h-16 mr-4" />
                     <h1 className="text-4xl font-bold">NoteVault</h1>
                 </div>
                 

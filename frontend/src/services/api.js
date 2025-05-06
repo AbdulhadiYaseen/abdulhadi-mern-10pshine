@@ -24,11 +24,11 @@ api.interceptors.request.use(
 
 export const authService = {
   signup: async (userData) => {
-    const response = await api.post('/auth/signup', userData);
+    const response = await api.post('/api/auth/signup', userData);
     return response.data;
   },
   login: async (credentials) => {
-    const response = await api.post('/auth/login', credentials);
+    const response = await api.post('/api/auth/login', credentials);
     if (response.data.token) {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -37,7 +37,7 @@ export const authService = {
   },
   logout: async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post('/api/auth/logout');
     } finally {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -51,23 +51,23 @@ export const authService = {
 
 export const noteService = {
   getNotes: async () => {
-    const response = await api.get('/notes');
+    const response = await api.get('/api/notes');
     return response.data;
   },
   getNote: async (id) => {
-    const response = await api.get(`/notes/${id}`);
+    const response = await api.get(`/api/notes/${id}`);
     return response.data;
   },
   createNote: async (noteData) => {
-    const response = await api.post('/notes', noteData);
+    const response = await api.post('/api/notes', noteData);
     return response.data;
   },
   updateNote: async (id, noteData) => {
-    const response = await api.put(`/notes/${id}`, noteData);
+    const response = await api.put(`/api/notes/${id}`, noteData);
     return response.data;
   },
   deleteNote: async (id) => {
-    const response = await api.delete(`/notes/${id}`);
+    const response = await api.delete(`/api/notes/${id}`);
     return response.data;
   }
 };

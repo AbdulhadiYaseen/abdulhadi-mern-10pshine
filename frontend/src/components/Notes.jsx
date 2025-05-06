@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiPlus, FiMoreVertical, FiTrash2, FiEdit, FiCalendar } from "react-icons/fi";
+import { FiPlus, FiMoreVertical, FiTrash2, FiEdit, FiCalendar, FiSearch } from "react-icons/fi";
 import { noteService } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
@@ -8,14 +8,17 @@ function Notes({ onLogout }) {
     const navigate = useNavigate();
     const { logout, user } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
     const [noteTitle, setNoteTitle] = useState("");
     const [noteContent, setNoteContent] = useState("");
+    const [editingNoteId, setEditingNoteId] = useState(null);
     const [notes, setNotes] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
     const [selectedNote, setSelectedNote] = useState(null);
     const [openMenuId, setOpenMenuId] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [viewMode, setViewMode] = useState("grid"); 
+    const [viewMode, setViewMode] = useState("grid");
 
     useEffect(() => {
         fetchNotes();
@@ -37,6 +40,35 @@ function Notes({ onLogout }) {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    // Filter notes based on search query
+    const filteredNotes = notes.filter(note => {
+        const query = searchQuery.toLowerCase();
+        return (
+            note.title.toLowerCase().includes(query) || 
+            (note.content && note.content.toLowerCase().includes(query))
+        );
+    });
+
+    const handleSearchChange = (e) => {
+        setSearchQuery(e.target.value);
+    };
+
+    const clearSearch = () => {
+        setSearchQuery("");
+    };
+
+    // Highlight search matches in text
+    const highlightText = (text, searchTerm) => {
+        if (!searchTerm || !text) return text;
+        
+        const parts = text.split(new RegExp(`(${searchTerm})`, 'gi'));
+        return parts.map((part, index) => 
+            part.toLowerCase() === searchTerm.toLowerCase() 
+                ? <span key={index} className="bg-yellow-200">{part}</span> 
+                : part
+        );
     };
 
     const handleAddNote = async () => {
@@ -101,6 +133,65 @@ function Notes({ onLogout }) {
         }
     };
 
+    const handleEditClick = (note, event) => {
+        if (event) event.stopPropagation();
+        setOpenMenuId(null);
+        setEditingNoteId(note.id);
+        setNoteTitle(note.title);
+        setNoteContent(note.content || "");
+        setIsEditMode(true);
+        setIsModalOpen(true);
+    };
+
+    const handleUpdateNote = async () => {
+        if (noteTitle.trim() && editingNoteId) {
+            setIsLoading(true);
+            try {
+                const updatedNote = {
+                    title: noteTitle,
+                    content: noteContent
+                };
+                
+                const response = await noteService.updateNote(editingNoteId, updatedNote);
+                
+                // Update notes array
+                setNotes(notes.map(note => 
+                    note.id === editingNoteId 
+                        ? { ...note, ...updatedNote, updatedAt: new Date().toISOString() } 
+                        : note
+                ));
+                
+                // Update selected note if currently viewing it
+                if (selectedNote && selectedNote.id === editingNoteId) {
+                    setSelectedNote({ 
+                        ...selectedNote, 
+                        ...updatedNote, 
+                        updatedAt: new Date().toISOString() 
+                    });
+                }
+                
+                setIsModalOpen(false);
+                setIsEditMode(false);
+                setEditingNoteId(null);
+                setNoteTitle("");
+                setNoteContent("");
+            } catch (err) {
+                setError('Failed to update note. Please try again.');
+                console.error('Error updating note:', err);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setIsEditMode(false);
+        setEditingNoteId(null);
+        setNoteTitle("");
+        setNoteContent("");
+    };
+
     const toggleMenu = (noteId, event) => {
         event.stopPropagation(); 
         setOpenMenuId(openMenuId === noteId ? null : noteId);
@@ -109,16 +200,19 @@ function Notes({ onLogout }) {
     const handleLogout = async () => {
         try {
             await logout();
-            onLogout();
+            if (onLogout) {
+                onLogout();
+            }
             navigate('/login');
         } catch (err) {
             console.error('Error logging out:', err);
+            // Even if there's an error, try to navigate to login
+            navigate('/login');
         }
     };
 
     const goBackToGrid = () => {
         setViewMode("grid");
-        setSelectedNote(null);
     };
 
     const formatDate = (dateString) => {
@@ -132,7 +226,6 @@ function Notes({ onLogout }) {
 
     return (
         <div className="flex h-screen bg-gray-50">
-            {}
             <aside className="w-48 bg-yellow-500 text-white p-4 min-h-screen">
                 <div className="mb-8">
                     <h2 className="text-l font-bold">{user?.name || 'User'}</h2>
@@ -174,7 +267,6 @@ function Notes({ onLogout }) {
                 </ul>
             </aside>
 
-            {}
             <div className="flex-1 p-6 overflow-y-auto">
                 <div className="mb-6 flex justify-between items-center">
                     <div>
@@ -205,23 +297,51 @@ function Notes({ onLogout }) {
                     </div>
                 )}
                 
+                {/* Search Bar */}
+                {viewMode === "grid" && (
+                    <div className="mb-6 relative">
+                        <div className="relative">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-500">
+                                <FiSearch />
+                            </span>
+                            <input
+                                type="text"
+                                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                                placeholder="Search notes by title or content..."
+                                value={searchQuery}
+                                onChange={handleSearchChange}
+                            />
+                            {searchQuery && (
+                                <button 
+                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                                    onClick={clearSearch}
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+                
                 {isLoading && !notes.length ? (
                     <div className="text-center text-gray-500 py-10">Loading notes...</div>
                 ) : viewMode === "grid" ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {notes.length === 0 ? (
+                        {filteredNotes.length === 0 ? (
                             <div className="col-span-full text-center py-10 text-gray-500">
-                                No notes found. Create your first note!
+                                {notes.length === 0 ? 
+                                    "No notes found. Create your first note!" : 
+                                    "No notes match your search. Try a different term."}
                             </div>
                         ) : (
-                            notes.map((note) => (
+                            filteredNotes.map((note) => (
                                 <div
                                     key={note.id}
                                     className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow p-4 border border-gray-200 relative"
                                     onClick={() => handleNoteClick(note)}
                                 >
                                     <div className="flex justify-between items-start mb-2">
-                                        <h3 className="font-bold text-gray-800 text-lg truncate">{note.title}</h3>
+                                        <h3 className="font-bold text-gray-800 text-lg truncate">{highlightText(note.title, searchQuery)}</h3>
                                         <div className="relative">
                                             <button
                                                 onClick={(e) => toggleMenu(note.id, e)}
@@ -231,6 +351,13 @@ function Notes({ onLogout }) {
                                             </button>
                                             {openMenuId === note.id && (
                                                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+                                                    <button
+                                                        onClick={(e) => handleEditClick(note, e)}
+                                                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                    >
+                                                        <FiEdit className="mr-2" />
+                                                        Edit Note
+                                                    </button>
                                                     <button
                                                         onClick={(e) => handleDeleteNote(note.id, e)}
                                                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
@@ -243,7 +370,7 @@ function Notes({ onLogout }) {
                                         </div>
                                     </div>
                                     <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                                        {getContentPreview(note.content)}
+                                        {highlightText(getContentPreview(note.content), searchQuery)}
                                     </p>
                                     <div className="flex items-center text-xs text-gray-500 mt-2">
                                         <FiCalendar className="mr-1" />
@@ -262,21 +389,30 @@ function Notes({ onLogout }) {
                         ) : selectedNote ? (
                             <div>
                                 <div className="flex justify-between items-center mb-4">
-                                    <h2 className="text-2xl font-bold text-gray-800">{selectedNote.title}</h2>
-                                    <button
-                                        onClick={(e) => handleDeleteNote(selectedNote.id, e)}
-                                        className="text-red-600 hover:text-red-800 p-2"
-                                        title="Delete Note"
-                                    >
-                                        <FiTrash2 />
-                                    </button>
+                                    <h2 className="text-2xl font-bold text-gray-800">{highlightText(selectedNote.title, searchQuery)}</h2>
+                                    <div className="flex">
+                                        <button
+                                            onClick={(e) => handleEditClick(selectedNote, e)}
+                                            className="text-blue-600 p-2 mr-2"
+                                            title="Edit Note"
+                                        >
+                                            <FiEdit />
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleDeleteNote(selectedNote.id, e)}
+                                            className="text-red-600 p-2"
+                                            title="Delete Note"
+                                        >
+                                            <FiTrash2 />
+                                        </button>
+                                    </div>
                                 </div>
                                 <p className="text-gray-500 mb-6">
                                     Created: {new Date(selectedNote.createdAt).toLocaleString()}
                                 </p>
                                 <div className="prose max-w-none">
                                     {selectedNote.content.split('\n').map((line, index) => (
-                                        <p key={index} className="mb-2 text-gray-700">{line}</p>
+                                        <p key={index} className="mb-2 text-gray-700">{highlightText(line, searchQuery)}</p>
                                     ))}
                                 </div>
                             </div>
@@ -289,14 +425,15 @@ function Notes({ onLogout }) {
                 )}
             </div>
             
-            {}
             {isModalOpen && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
                     <div className="bg-white p-8 rounded-lg w-full max-w-3xl shadow-xl transform transition-all">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-2xl font-semibold text-gray-800">Add a Note</h2>
+                            <h2 className="text-2xl font-semibold text-gray-800">
+                                {isEditMode ? 'Edit Note' : 'Add a Note'}
+                            </h2>
                             <button 
-                                onClick={() => setIsModalOpen(false)}
+                                onClick={closeModal}
                                 className="text-gray-500 hover:text-gray-700 cursor-pointer"
                             >
                                 ✕
@@ -309,7 +446,7 @@ function Notes({ onLogout }) {
                                 </label>
                                 <input 
                                     type="text" 
-                                    className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                                    className="w-full border border-gray-300 rounded-md p-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                                     placeholder="Enter note title..."
                                     value={noteTitle}
                                     onChange={(e) => setNoteTitle(e.target.value)}
@@ -321,7 +458,7 @@ function Notes({ onLogout }) {
                                 </label>
                                 <textarea 
                                     id="noteContent"
-                                    className="w-full h-64 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                                    className="w-full h-64 border border-gray-300 rounded-md p-2 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
                                     placeholder="Enter your note content..."
                                     value={noteContent}
                                     onChange={(e) => setNoteContent(e.target.value)}
@@ -330,16 +467,16 @@ function Notes({ onLogout }) {
                             <div className="flex justify-end space-x-3 mt-6">
                                 <button 
                                     className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
-                                    onClick={() => setIsModalOpen(false)}
+                                    onClick={closeModal}
                                 >
                                     Cancel
                                 </button>
                                 <button 
                                     className="px-4 py-2 text-white bg-yellow-500 rounded-md hover:bg-yellow-600 transition-colors cursor-pointer disabled:opacity-50"
-                                    onClick={handleAddNote}
+                                    onClick={isEditMode ? handleUpdateNote : handleAddNote}
                                     disabled={isLoading || !noteTitle.trim()}
                                 >
-                                    {isLoading ? 'Adding...' : 'Add Note'}
+                                    {isLoading ? (isEditMode ? 'Saving...' : 'Adding...') : (isEditMode ? 'Save Changes' : 'Add Note')}
                                 </button>
                             </div>
                         </div>
